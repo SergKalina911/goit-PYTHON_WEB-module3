@@ -98,6 +98,64 @@ Python розроблявся в епоху одноядерних процес�
     3. Перемикання між процесами також використовує процесорний час.
 
 
+                                        Створення потоків у Python
+
+
+Документація про доступні в Python механізми написання потокового коду.
+https://docs.python.org/3/library/concurrency.html
+
+
+                        Потік як клас
+
+​Щоб створити потік, найпростіше імпортувати клас Thread з модуля threading і наслідуватись від цього класу. Далі 
+вам потрібно визначити метод run у вашого класу, цей метод буде виконуватись в окремому потоці. Щоб розпочати 
+виконання коду в окремому потоці, потрібно викликати метод start, який визначений у Thread. Давайте напишемо клас 
+MyThread, що в окремому потоці спить вказаний час і після цього виводить у консоль 'Wake up!':
+"""
+
+from threading import Thread
+import logging
+from time import sleep
+
+
+class MyThread(Thread):
+    def __init__(self, group=None, target=None, name=None, args=(), kwargs=None, *, daemon=None):
+        super().__init__(group=group, target=target, name=name, daemon=daemon)
+        self.args = args
+        self.kwargs = kwargs
+
+    def run(self) -> None:
+        sleep(2)
+        logging.debug('Wake up!')
+        logging.debug(f"args: {self.args}")
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG, format='%(threadName)s %(message)s')
+    for i in range(5):
+        thread = MyThread(args=(f"Count thread - {i}",))
+        thread.start()
+    print('Usefull message')
+
+
+"""
+Якщо виконати цей скрипт, то в консолі ви побачите:
+
+Usefull message
+Thread-5 Wake up!
+Thread-5 args: ('Count thread - 4',)
+Thread-3 Wake up!
+Thread-3 args: ('Count thread - 2',)
+Thread-2 Wake up!
+Thread-2 args: ('Count thread - 1',)
+Thread-1 Wake up!
+Thread-1 args: ('Count thread - 0',)
+Thread-4 Wake up!
+Thread-4 args: ('Count thread - 3',)
+
+Це означає, що основний потік застосунку спочатку вивів 'Usefull message' і після нього через 2 секунди п'ять 
+потоків MyThread вивели своє 'Wake up!', і тільки після цього скрипт завершився.
+
 
 
 """
