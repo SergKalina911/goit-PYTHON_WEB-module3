@@ -346,5 +346,99 @@ First thread Start!
 MainThread End program
 
 
+                                        
+                                        Контроль доступу до ресурсів
+
+Оскільки ОС може на будь-якому виклику перервати виконання потоку та передати контроль іншому потоку, ви не можете 
+бути впевненим, що робота із загальним ресурсом буде коректно завершеною і ресурс не опиниться в невизначеному 
+стані.
+
+
+                        Блокування
+
+​Для цього є механізм блокування. У Python є два примітива блокувань: Lock та RLock. Lock трохи швидший і більш 
+низькорівневий, але він не рекурсивний і може бути ситуація потрапляння в DeadLock, коли виконання коду 
+заблокується, кілька потоків чекатимуть, доки хтось віддасть Lock, а його ніхто ніколи вже не віддасть. Це і є 
+ситуація, коли програма "зависла".
+
+RLock трохи повільніший, зате виключає взаємне блокування. Рекомендується завжди використовувати саме його, якщо 
+немає вагомих причин використовувати Lock.
+
+    NOTE
+    Якщо провести аналогію з життя, то Lock це коли у кожного потоку один і той самий ключ і будь-який потік може 
+    відкрити замок, хто б його не закрив із потоків. З RLock ситуація трохи інша, у кожного потоку свій ключ і 
+    свій замок. 
+
+Потік може відкрити лише свій замок своїм ключем і не відкриє замок, якщо його закрив інший потік."""
+
+from threading import Thread, RLock
+import logging
+from time import time, sleep
+
+lock = RLock()
+
+
+def func(locker, delay):
+    timer = time()
+    locker.acquire()
+    sleep(delay)
+    locker.release()
+    logging.debug(f'Done {time() - timer}')
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG, format='%(threadName)s %(message)s')
+    t1 = Thread(target=func, args=(lock, 2))
+    t2 = Thread(target=func, args=(lock, 2))
+    t1.start()
+    t2.start()
+    logging.debug('Started')
+
+
+"""
+У цьому прикладі ми запустили два потоки і один загальний RLock. У консолі ви побачите:
+
+MainThread Started
+Thread-1 Done 2.0003550052642822
+Thread-2 Done 4.000735521316528
+
+Таке виведення означає, що один із потоків "взяв" lock і поки він його не "відпустив", інший чекав доки lock 
+звільниться. Блокування ресурсу досягається виконанням команди locker.acquire(). Це робиться, щоб загальним 
+ресурсом міг користуватися лише один потік на один момент часу, і лише коли потік закінчить роботу із загальним 
+ресурсом, він відпускає lock, у нашому випадку команда locker.release(), і хтось інший зможе попрацювати з 
+ресурсом. Так гарантується, що загальний ресурс не потрапить у невизначений стан, коли хтось почав із ним роботу 
+та не закінчив, а хтось інший почав, і так далі.
+
+Але найчастіше для блокування використовують контекст виконання:"""
+
+from threading import Thread, RLock
+import logging
+from time import time, sleep
+
+lock = RLock()
+
+
+def func(locker, delay):
+    timer = time()
+    with locker:
+        sleep(delay)
+    logging.debug(f'Done {time() - timer}')
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG, format='%(threadName)s %(message)s')
+    t1 = Thread(target=func, args=(lock, 2))
+    t2 = Thread(target=func, args=(lock, 2))
+    t1.start()
+    t2.start()
+    logging.debug('Started')
+
+# Результат буде тим самим:
+# MainThread Started
+# Thread-1 Done 2.0014190673828125
+# Thread-2 Done 4.002039194107056
+
+"""
+
 
 """
