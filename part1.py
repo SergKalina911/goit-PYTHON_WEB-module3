@@ -439,6 +439,67 @@ if __name__ == '__main__':
 # Thread-2 Done 4.002039194107056
 
 """
+                        Семафори​
+
+Другий примітив синхронізації — це семафори.
+
+Семафори підходять до блокування іншим шляхом та вказують, що кілька потоків можуть користуватися ресурсом 
+одночасно і цим обмежують кількість потоків. Наприклад, ми не хочемо надсилати десятки тисяч запитів до мережі 
+одночасно, щоб не створювати навантаження на обладнання і вкажемо семафор, щоб не більше ста потоків могли 
+одночасно надсилати запити. Щойно якийсь із потоків закінчить роботу і семафор його відпустить, то наступний 
+потік із черги очікування зможе зробити свій запит.
+
+Як приклад розглянемо виконання 10 потоків і обмежимо виконання за допомогою семафору до двох одночасно:"""
+
+from threading import Semaphore, Thread
+import logging
+from time import sleep
+
+
+def worker(condition):
+    with condition:
+        logging.debug(f'Got semaphore')
+        sleep(1)
+        logging.debug(f'finished')
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG, format='%(threadName)s %(message)s')
+    pool = Semaphore(2)
+    for num in range(10):
+        thread = Thread(name=f'Th-{num}', target=worker, args=(pool, ))
+        thread.start()
+
+"""
+У цьому прикладі ми створили семафор, що обмежує до 2. Виконавши код, побачимо:
+
+Th-0 Got semaphore
+Th-1 Got semaphore
+Th-1 finished
+Th-0 finished
+Th-2 Got semaphore
+Th-3 Got semaphore
+Th-3 finished
+Th-2 finished
+Th-4 Got semaphore
+Th-5 Got semaphore
+Th-5 finished
+Th-4 finished
+Th-6 Got semaphore
+Th-7 Got semaphore
+Th-7 finished
+Th-6 finished
+Th-8 Got semaphore
+Th-9 Got semaphore
+Th-9 finished
+Th-8 finished
+
+Результат у вас може відрізнятися, це справа випадку, коли і який потік візьме семафор. Але суть буде та сама, 
+один потік чекатиме своєї черги, доки семафор звільниться. Крім того, якщо потоки одночасно почнуть писати в 
+консоль їх виведення може перемішатися і матиме вигляд, начебто дві людини одночасно намагаються набрати 
+повідомлення на одній клавіатурі.
+
+Наступним кроком ми розглянемо синхронізацію роботи потоків за допомогою умов та подій.
 
 
 """
