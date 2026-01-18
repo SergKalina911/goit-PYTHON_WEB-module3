@@ -705,4 +705,57 @@ pid=14592, x=9
 https://docs.python.org/3.8/library/multiprocessing.html#module-multiprocessing.pool
 
 
+                        Створення процесів за допомогою пакета concurrent
+
+​Пакет concurrent.futures також реалізує API Executor для пулу процесів у класі ProcessPoolExecutor.
+https://docs.python.org/3/library/concurrent.futures.html#processpoolexecutor
+
+Основні можливості обмежені API Executor. Зручно використовувати ProcessPoolExecutor там, де потрібно виконати 
+CPU-bound завдання в async коді та реалізовано саме для підтримки виконання блокуючих CPU-bound завдань в 
+async застосунках (з async ми познайомимося в "Модуль 5: Асинхронне програмування в Python").
+
+Зараз поки що розглянемо приклад виконання CPU-bound завдання:"""
+
+import concurrent.futures
+import math
+
+
+PRIMES = [
+    112272535095293,
+    112582705942171,
+    112272535095293,
+    115280095190773,
+    115797848077099,
+    1099726899285419]
+
+
+def is_prime(n):
+    if n < 2:
+        return False
+    if n == 2:
+        return True
+    if n % 2 == 0:
+        return False
+
+    sqrt_n = int(math.floor(math.sqrt(n)))
+    for i in range(3, sqrt_n + 1, 2):
+        if n % i == 0:
+            return False
+    return True
+
+
+if __name__ == '__main__':
+    with concurrent.futures.ProcessPoolExecutor(4) as executor:
+        for number, prime in zip(PRIMES, executor.map(is_prime, PRIMES)):
+            print('%d is prime: %s' % (number, prime))
+"""
+Наприклад, цей код для пошуку простих чисел виконується у чотирьох процесах і поверне:
+
+112272535095293 is prime: True
+112582705942171 is prime: True
+112272535095293 is prime: True
+115280095190773 is prime: True
+115797848077099 is prime: True
+1099726899285419 is prime: False
+"""
 
