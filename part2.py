@@ -506,4 +506,140 @@ Process-2 started...
 
 У канал можна відправити будь-який тип даних, який можна перетворити на byte-рядок за допомогою pickle. 
 Не можна надсилати функції або інші об'єкти, які не серіалізуються.
+
+
+                        Черги завдань
+
+Окремий механізм обміну даними між процесами — це черги. Черга дозволяє "покласти" дані для обробки одним із 
+"працівників" і потім проконтролювати, коли "працівник" завершив обробку. Черги — це засіб комунікації між 
+одним відправником, найчастіше його називають master, та будь-якою кількістю одержувачів повідомлень, часто їх 
+називають slave або у нейтральнішому тоні — worker.
+
+Об'єктів у черзі може бути більше одного. Черга може бути обмежена за розміром, якщо це потрібно. Черга гарантує 
+порядок повідомлень та неможливість отримання одного повідомлення кількома одержувачами.
+
+Черги в Python реалізовані у класах Queue та JoinableQueue:"""
+
+from multiprocessing import Queue, Process, current_process
+from time import sleep
+import sys
+import logging
+
+logger = logging.getLogger()
+stream_handler = logging.StreamHandler()
+logger.addHandler(stream_handler)
+logger.setLevel(logging.DEBUG)
+# створення черги завдань
+q = Queue()
+
+# Функція, яка буде виконуватися в окремому процесі
+def worker(queue: Queue):
+    # отримання імені поточного процесу
+    name = current_process().name
+    # логування початку роботи процесу
+    logger.debug(f'{name} started...')
+    # отримання значення з черги завдань
+    val = queue.get()
+    # логування квадрата отриманого значення
+    logger.debug(f'{name} {val**2}')
+    sleep(1)
+    # завершення процесу
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    # створення процесів
+    w1 = Process(target=worker, args=(q, ))
+    w2 = Process(target=worker, args=(q, ))
+    # запуск процесів
+    w1.start()
+    w2.start()
+    # додавання завдань у чергу
+    q.put(8)
+    sleep(1)
+    q.put(16)
+    # очікування завершення процесів
+    w1.join()
+    w2.join()
+    # логування завершення програми
+    logger.debug('End program')
+    
+""" 
+Виведення:
+
+Process-1 started...
+Process-1 64
+Process-2 started...
+Process-2 256
+
+У цьому прикладі ми створили два процеси w1 та w2, які беруть із черги q собі завдання і виконують їх. Наш 
+основний процес, що виконує роль master, кладе завдання у чергу q, але ніяк не контролює їх виконання, а 
+процеси worker читають повідомлення з черги та завершуються.
+
+Для контролю процесу завершення завдань можна використовувати клас JoinableQueue:
+"""
+
+from multiprocessing import JoinableQueue, Process, current_process
+from time import sleep
+import sys
+import logging
+
+logger = logging.getLogger()
+stream_handler = logging.StreamHandler()
+logger.addHandler(stream_handler)
+logger.setLevel(logging.DEBUG)
+# створення черги завдань
+jq = JoinableQueue()
+
+
+def worker(jqueue: JoinableQueue):
+    # отримання імені поточного процесу
+    name = current_process().name
+    # логування початку роботи процесу
+    logger.debug(f'{name} started...')
+    # отримання значення з черги завдань
+    val = jqueue.get()
+    # логування квадрата отриманого значення
+    logger.debug(f'{name} {val**2}')
+    sleep(1)
+    # повідомлення про завершення завдання
+    jqueue.task_done()
+    # завершення процесу
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    # створення процесів
+    w1 = Process(target=worker, args=(jq, ))
+    w2 = Process(target=worker, args=(jq, ))
+    # запуск процесів
+    w1.start()
+    w2.start()
+    # додавання завдань у чергу
+    jq.put(8)
+    sleep(1)
+    jq.put(16)
+    jq.join()
+    print('Finished')
+
+"""
+Виведення:
+Process-2 started...
+Process-2 64
+Process-1 started...
+Process-1 256
+Finished
+
+У цьому прикладі master-процес (основний процес) очікує виконання завдань від робочих процесів за допомогою 
+виклику методу jq.join() у екземпляра черги JoinableQueue. Самі worker-процеси повідомляють master про успішне 
+виконання завдання через виклик методу черги jqueue.task_done(). Це дозволяє тримати в курсі master-процес про 
+стан завершення робочого процесу та рядок коду print('Finished') виконається тільки тоді, коли всі робочі 
+процеси будуть завершені.
+
+    !!! TIP
+    Процеси використовують для синхронізації також весь набір класів, який ми розглянули для потоків, — це: 
+    RLock, Event, Condition, Semaphore та Barrier. Принцип їх застосування той самий, але імпортуються класи з 
+    пакету multiprocessing. Ми не розглядали приклади їх застосування, оскільки, як ми вже сказали, принцип 
+    роботи у них такий самий, як і у потоках, і нічим не відрізняється.
+    
 """
